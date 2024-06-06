@@ -1,0 +1,4 @@
+(executable
+ (public_name murder_tool)
+ (name main)
+ (libraries feather))
