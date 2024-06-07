@@ -10,6 +10,7 @@ depends: [
   "ocaml"
   "dune" {>= "3.10"}
   "feather"
+  "angstrom"
   "odoc" {with-doc}
 ]
 build: [
