@@ -16,4 +16,4 @@
 (package
  (name murder_tool)
  (synopsis "Kill processes with a TUI")
- (depends ocaml dune feather angstrom))
+ (depends ocaml dune feather angstrom notty nottui))
