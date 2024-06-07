@@ -201,7 +201,17 @@ module App = struct
     in
     Lwd.set app new_app
 
-  let kill_group app = ()
+  let kill_group app =
+    let app = Lwd.peek app in
+    let group = List.nth (on_page app) app.active_idx in
+    let _ =
+      List.iter
+        (fun { pid; _ } ->
+          Feather.process "kill" [ string_of_int pid ] |> Feather.run)
+        group.processes
+    in
+    let _ = Stdlib.exit 0 in
+    ()
 
   let action_handler app = function
     | `Arrow `Up, _ ->
