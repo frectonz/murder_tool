@@ -159,6 +159,7 @@ module App = struct
   let render app =
     W.vbox
       [
+        Ui.space 0 1 |> Lwd.return;
         render_logo;
         Ui.space 0 2 |> Lwd.return;
         render_groups (on_page app) app.active_idx;
