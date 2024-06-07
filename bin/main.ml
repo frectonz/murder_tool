@@ -14,13 +14,10 @@ let grey = A.gray 5
 module List = struct
   include List
 
-  let intersperse x lst =
-    let rec inner acc = function
-      | [] -> acc
-      | x1 :: [] -> inner (x1 :: x :: acc) []
-      | x1 :: x2 :: tl -> inner (x :: x2 :: x :: x1 :: acc) tl
-    in
-    inner [] lst |> List.rev
+  let rec intersperse sep ls =
+    match ls with
+    | [] | [ _ ] -> ls
+    | hd :: tl -> hd :: sep :: intersperse sep tl
 end
 
 type process = { pid : int; user : string; command : string }
@@ -132,7 +129,7 @@ module App = struct
     let pids =
       g.processes
       |> List.map (fun p -> W.printf ~attr:pid_style "[%d]" p.pid |> Lwd.return)
-      |> List.intersperse (W.printf ~attr:A.(fg grey) "" |> Lwd.return)
+      |> List.intersperse (W.printf ~attr:A.(fg grey) "•" |> Lwd.return)
     in
     W.vbox
       [
