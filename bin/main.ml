@@ -156,6 +156,25 @@ module App = struct
         W.string ~attr:A.(fg white) "." |> Lwd.return;
       ]
 
+  let render_help =
+    W.vbox
+      [
+        W.hbox
+          [
+            W.string ~attr:A.(fg white) " Press " |> Lwd.return;
+            W.string ~attr:A.(fg green ++ st bold) " Up " |> Lwd.return;
+            W.string ~attr:A.(fg white) " or " |> Lwd.return;
+            W.string ~attr:A.(fg green ++ st bold) " Down " |> Lwd.return;
+            W.string ~attr:A.(fg white) " to move around." |> Lwd.return;
+          ];
+        W.hbox
+          [
+            W.string ~attr:A.(fg white) " Press " |> Lwd.return;
+            W.string ~attr:A.(fg green ++ st bold) " Escape " |> Lwd.return;
+            W.string ~attr:A.(fg white) " to quit." |> Lwd.return;
+          ];
+      ]
+
   let render app =
     W.vbox
       [
@@ -165,6 +184,8 @@ module App = struct
         render_groups (on_page app) app.active_idx;
         Ui.space 0 2 |> Lwd.return;
         render_page app;
+        Ui.space 0 2 |> Lwd.return;
+        render_help;
       ]
 
   let move_up app =
