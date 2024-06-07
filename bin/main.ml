@@ -1,12 +1,15 @@
 [@@@warning "-69"]
 [@@@warning "-32"]
 [@@@warning "-26"]
+[@@@warning "-27"]
 
 open Nottui
 module W = Nottui_widgets
 module A = Notty.A
 
 let ( >> ) f g s = f s |> g
+let groups_per_page = 8
+let grey = A.gray 5
 
 module List = struct
   include List
@@ -15,7 +18,7 @@ module List = struct
     let rec inner acc = function
       | [] -> acc
       | x1 :: [] -> inner (x1 :: x :: acc) []
-      | x1 :: x2 :: tl -> inner (x :: x1 :: x :: x2 :: acc) tl
+      | x1 :: x2 :: tl -> inner (x :: x2 :: x :: x1 :: acc) tl
     in
     inner [] lst |> List.rev
 end
@@ -69,6 +72,7 @@ module Parser = struct
     }
 
   let bin_with_path proc = not (String.starts_with ~prefix:"[" proc.command)
+  let sort_groups = List.sort (fun x1 x2 -> String.compare x1.group x2.group)
   let input = many (line <* end_of_line)
 
   let parse =
@@ -78,14 +82,38 @@ module Parser = struct
     >> Result.map (List.filter bin_with_path)
     >> Result.map (List.map get_binary)
     >> Result.map sort_processes >> Result.map group_processes
+    >> Result.map sort_groups
 end
 
 module App = struct
-  type app = { search_term : string option; processes : grouped list }
+  type app = {
+    search_term : string option;
+    groups : grouped list;
+    active_idx : int;
+    curr_page : int;
+    total_pages : int;
+  }
+
+  let init groups =
+    Lwd.var
+      {
+        search_term = None;
+        groups;
+        active_idx = 0;
+        curr_page = 1;
+        total_pages = List.length groups / groups_per_page;
+      }
+
+  let start_index { curr_page; _ } = (curr_page - 1) * groups_per_page
+  let end_index { curr_page; _ } = curr_page * groups_per_page
+
+  let on_page app =
+    app.groups
+    |> List.filteri (fun i _ -> i >= start_index app && i < end_index app)
+
+  let render_logo = W.string ~attr:A.(fg red) Logo.logo |> Lwd.return
 
   let render_group g active =
-    let grey = A.gray 5 in
-
     let title_style =
       if active then A.(bg green ++ fg black ++ st bold)
       else A.(bg grey ++ fg black)
@@ -119,9 +147,81 @@ module App = struct
     |> List.intersperse (Ui.space 0 1 |> Lwd.return)
     |> W.vbox
 
-  let run processes =
-    let app = { search_term = None; processes } |> Lwd.var in
-    Ui_loop.run (render_groups processes 3)
+  let render_page app =
+    W.hbox
+      [
+        W.string ~attr:A.(fg white) " Page " |> Lwd.return;
+        W.string ~attr:A.(fg green ++ st bold) (string_of_int app.curr_page)
+        |> Lwd.return;
+        W.string ~attr:A.(fg white) " of " |> Lwd.return;
+        W.string ~attr:A.(fg green ++ st bold) (string_of_int app.total_pages)
+        |> Lwd.return;
+        W.string ~attr:A.(fg white) "." |> Lwd.return;
+      ]
+
+  let render app =
+    W.vbox
+      [
+        render_logo;
+        Ui.space 0 2 |> Lwd.return;
+        render_groups (on_page app) app.active_idx;
+        Ui.space 0 2 |> Lwd.return;
+        render_page app;
+      ]
+
+  let move_up app =
+    let old_app = Lwd.peek app in
+    let new_app = { old_app with active_idx = old_app.active_idx - 1 } in
+    let new_app =
+      if new_app.active_idx < 0 then
+        {
+          new_app with
+          active_idx = groups_per_page - 1;
+          curr_page = new_app.curr_page - 1;
+        }
+      else new_app
+    in
+    let new_app =
+      if new_app.curr_page == 0 then
+        { new_app with curr_page = new_app.total_pages }
+      else new_app
+    in
+    Lwd.set app new_app
+
+  let move_down app =
+    let old_app = Lwd.peek app in
+    let new_app = { old_app with active_idx = old_app.active_idx + 1 } in
+    let new_app =
+      if new_app.active_idx == groups_per_page then
+        { new_app with active_idx = 0; curr_page = new_app.curr_page + 1 }
+      else new_app
+    in
+    let new_app =
+      if new_app.curr_page > new_app.total_pages then
+        { new_app with curr_page = 1 }
+      else new_app
+    in
+    Lwd.set app new_app
+
+  let kill_group app = ()
+
+  let action_handler app = function
+    | `Arrow `Up, _ ->
+        move_up app;
+        `Handled
+    | `Arrow `Down, _ ->
+        move_down app;
+        `Handled
+    | `Enter, _ ->
+        kill_group app;
+        `Handled
+    | _ -> `Unhandled
+
+  let ui app =
+    Lwd.get app |> Lwd.map ~f:render |> Lwd.join
+    |> Lwd.map ~f:(Ui.keyboard_area (action_handler app))
+
+  let run app = Ui_loop.run (ui app)
 end
 
 let () =
@@ -131,5 +231,5 @@ let () =
     |> (fun s -> s ^ "\n")
     |> Parser.parse
   with
-  | Ok procs -> App.run procs
+  | Ok procs -> procs |> App.init |> App.run
   | Error err -> Printf.printf "Error: %s\n" err
