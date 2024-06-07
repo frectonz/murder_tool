@@ -16,7 +16,7 @@ module Parser = struct
     take_while1 (function '0' .. '9' -> true | _ -> false) >>| int_of_string
 
   let user =
-    take_while1 (function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false)
+    take_while1 (function 'a' .. 'z' | 'A' .. 'Z' | '+' -> true | _ -> false)
 
   let command = take_while (function '\n' -> false | _ -> true)
   let spaces = skip_while (function ' ' -> true | _ -> false)
@@ -54,12 +54,14 @@ module Parser = struct
       command = proc.command |> String.split_on_char '/' |> List.rev |> List.hd;
     }
 
+  let bin_with_path proc = not (String.starts_with ~prefix:"[" proc.command)
   let input = many (line <* end_of_line)
 
   let parse =
     parse_string ~consume:All input
     >> Result.map make_processes
     >> Result.map (List.map get_executable)
+    >> Result.map (List.filter bin_with_path)
     >> Result.map (List.map get_binary)
     >> Result.map sort_processes >> Result.map group_processes
 end
