@@ -173,6 +173,12 @@ module App = struct
             W.string ~attr:A.(fg green ++ st bold) " Escape " |> Lwd.return;
             W.string ~attr:A.(fg white) " to quit." |> Lwd.return;
           ];
+        W.hbox
+          [
+            W.string ~attr:A.(fg white) " Press " |> Lwd.return;
+            W.string ~attr:A.(fg green ++ st bold) " Enter " |> Lwd.return;
+            W.string ~attr:A.(fg white) " to kill the process." |> Lwd.return;
+          ];
       ]
 
   let render app =
