@@ -1,8 +1,3 @@
-[@@@warning "-69"]
-[@@@warning "-32"]
-[@@@warning "-26"]
-[@@@warning "-27"]
-
 open Nottui
 module W = Nottui_widgets
 module A = Notty.A
@@ -20,7 +15,7 @@ module List = struct
     | hd :: tl -> hd :: sep :: intersperse sep tl
 end
 
-type process = { pid : int; user : string; command : string }
+type process = { pid : int; command : string }
 type grouped = { group : string; processes : process list }
 
 module Parser = struct
@@ -29,9 +24,6 @@ module Parser = struct
   let pid =
     take_while1 (function '0' .. '9' -> true | _ -> false) >>| int_of_string
 
-  let user =
-    take_while1 (function 'a' .. 'z' | 'A' .. 'Z' | '+' -> true | _ -> false)
-
   let command = take_while (function '\n' -> false | _ -> true)
   let spaces = skip_while (function ' ' -> true | _ -> false)
 
@@ -39,12 +31,10 @@ module Parser = struct
     let* _ = spaces in
     let* pid = pid in
     let* _ = spaces in
-    let* user = user in
-    let* _ = spaces in
     let* command = command in
-    return (pid, user, command)
+    return (pid, command)
 
-  let make_process (pid, user, command) = { pid; user; command }
+  let make_process (pid, command) = { pid; command }
   let make_processes = List.map make_process
 
   let sort_processes =
@@ -84,7 +74,6 @@ end
 
 module App = struct
   type app = {
-    search_term : string option;
     groups : grouped list;
     active_idx : int;
     curr_page : int;
@@ -94,7 +83,6 @@ module App = struct
   let init groups =
     Lwd.var
       {
-        search_term = None;
         groups;
         active_idx = 0;
         curr_page = 1;
@@ -261,7 +249,7 @@ end
 
 let () =
   match
-    Feather.process "ps" [ "-eo"; "pid,user,cmd"; "--no-headers" ]
+    Feather.process "ps" [ "-eo"; "pid,cmd"; "--no-headers" ]
     |> Feather.collect Feather.stdout
     |> (fun s -> s ^ "\n")
     |> Parser.parse
